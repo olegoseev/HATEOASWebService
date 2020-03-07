@@ -29,11 +29,15 @@ namespace HATEOASWebService
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
             services.AddScoped<ILibraryRepository, LibraryRepository>();
+            services.AddTransient<IPropertyMappingService, PropertyMappingService>();
+            services.AddTransient<IPropertyCheckerService, PropertyCheckerService>();
 
             services.AddDbContext<LibraryDbContext>(options =>
             {
-                options.UseSqlServer(
-                    @"Server=(localdb)\mssqllocaldb;Database=CourseLibraryDB;Trusted_Connection=True;");
+                var connectionString = Configuration["DefaultConnection"];
+                options.UseSqlServer(connectionString);
+                //    options.UseSqlServer(
+                //        @"Server=(localdb)\mssqllocaldb;Database=CourseLibraryDB;Trusted_Connection=True;");
             });
 
             // Json and XML formateer order does matter

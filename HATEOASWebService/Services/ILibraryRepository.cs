@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using HATEOASWebService.Data.Entities;
+using HATEOASWebService.Helpers;
 using HATEOASWebService.ResourceParameters;
 
 namespace HATEOASWebService.Services
@@ -12,7 +13,7 @@ namespace HATEOASWebService.Services
         void AddCourse(Guid authorId, Course course);
         void UpdateCourse(Course course);
         void DeleteCourse(Course course);
-        IEnumerable<Author> GetAuthors(AuthorsResourceParameters authorsResourceParameters);
+        PagedList<Author> GetAuthors(AuthorsResourceParameters authorsResourceParameters);
         IEnumerable<Author> GetAuthors();
         Author GetAuthor(Guid authorId);
         IEnumerable<Author> GetAuthors(IEnumerable<Guid> authorIds);

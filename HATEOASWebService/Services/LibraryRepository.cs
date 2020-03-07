@@ -3,18 +3,23 @@ using System.Collections.Generic;
 using System.Linq;
 using HATEOASWebService.Data.DbContexts;
 using HATEOASWebService.Data.Entities;
+using HATEOASWebService.Data.Models;
+using HATEOASWebService.Helpers;
 using HATEOASWebService.ResourceParameters;
 using Microsoft.EntityFrameworkCore;
 
 namespace HATEOASWebService.Services
 {
-    public class LibraryRepository :ILibraryRepository, IDisposable
+    public class LibraryRepository : ILibraryRepository, IDisposable
     {
         private readonly LibraryDbContext _context;
+        private readonly IPropertyMappingService _propertyMappingService;
 
-        public LibraryRepository(LibraryDbContext context)
+        public LibraryRepository(LibraryDbContext context,
+            IPropertyMappingService propertyMappingService)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
+            _propertyMappingService = propertyMappingService;
         }
 
         public void AddCourse(Guid authorId, Course course)
@@ -116,15 +121,9 @@ namespace HATEOASWebService.Services
             return _context.Authors.ToList<Author>();
         }
 
-        public IEnumerable<Author> GetAuthors(AuthorsResourceParameters authorsResourceParameters)
+        public PagedList<Author> GetAuthors(AuthorsResourceParameters authorsResourceParameters)
         {
             _ = authorsResourceParameters ?? throw new ArgumentNullException(nameof(authorsResourceParameters));
-
-            if(string.IsNullOrWhiteSpace(authorsResourceParameters.MainCategory) 
-                && string.IsNullOrWhiteSpace(authorsResourceParameters.SearchQuery))
-            {
-                return GetAuthors();
-            }
 
             var collection = _context.Authors as IQueryable<Author>;
 
@@ -144,7 +143,15 @@ namespace HATEOASWebService.Services
 
             }
 
-            return collection.ToList();
+            if(!string.IsNullOrWhiteSpace(authorsResourceParameters.OrderBy))
+            {
+                // get property mapping dictionary
+                var authorPropertyMappingDictionary = _propertyMappingService.GetPropertyMapping<AuthorDto, Author>();
+
+                collection = collection.ApplySort(authorsResourceParameters.OrderBy, authorPropertyMappingDictionary);
+
+            }
+            return PagedList<Author>.Create(collection, authorsResourceParameters.PageNumber, authorsResourceParameters.PageSize);
         }
 
         public IEnumerable<Author> GetAuthors(IEnumerable<Guid> authorIds)

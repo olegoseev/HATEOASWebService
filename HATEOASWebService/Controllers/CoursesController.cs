@@ -25,7 +25,7 @@ namespace HATEOASWebService.Controllers
             _libraryRepository = libraryRepository ?? throw new ArgumentNullException(nameof(libraryRepository));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         }
-        [HttpGet]
+        [HttpGet(Name = "GetCoursesForAuthor")]
         public ActionResult<IEnumerable<CourseDto>> GetCoursesForAuthor(Guid authorId)
         {
             if(!_libraryRepository.AuthorExists(authorId))
@@ -56,7 +56,7 @@ namespace HATEOASWebService.Controllers
             return Ok(_mapper.Map<CourseDto>(course));
         }
 
-        [HttpPost]
+        [HttpPost(Name = "CreateCourseForAuthor")]
         public ActionResult<CourseDto> CreateCourseForAuthor(Guid authorId, CourseForCreationDto course)
         {
             if(!_libraryRepository.AuthorExists(authorId))
