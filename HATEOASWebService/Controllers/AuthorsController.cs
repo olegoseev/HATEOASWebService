@@ -9,6 +9,7 @@ using HATEOASWebService.Helpers;
 using HATEOASWebService.ResourceParameters;
 using HATEOASWebService.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 
 namespace HATEOASWebService.Controllers
 {
@@ -121,13 +122,13 @@ namespace HATEOASWebService.Controllers
         {
             var links = new List<LinkDto>();
 
-            links.Add(new LinkDto(CreateAuthorsResourceUri(authorsResourceParameters,ResourceUriType.Current), "self", "GET"));
+            links.Add(new LinkDto(CreateAuthorsResourceUri(authorsResourceParameters, ResourceUriType.Current), "self", "GET"));
 
             if (hasNext)
             {
                 links.Add(new LinkDto(CreateAuthorsResourceUri(authorsResourceParameters, ResourceUriType.NextPage), "next-page", "GET"));
             }
-            if(hasPrevious)
+            if (hasPrevious)
             {
                 links.Add(new LinkDto(CreateAuthorsResourceUri(authorsResourceParameters, ResourceUriType.PreviousPage), "previous-page", "GET"));
             }
@@ -183,9 +184,22 @@ namespace HATEOASWebService.Controllers
             return Ok(linkedCollectionResource);
         }
 
+        [Produces("applicaiton/json",
+            "application/vnd.marvin.hateoas+json",
+            "application/vnd.marvin.author.full+json",
+            "application/vnd.marvin.author.full.hateoas+json",
+            "application/vnd.marvin.author.friendly+json",
+            "application/vnd.marvin.author.friendly.hateoas+json")]
         [HttpGet("{authorId}", Name = "GetAuthor")]
-        public IActionResult GetAuthor(Guid authorId, string fields)
+        public IActionResult GetAuthor(Guid authorId, string fields,
+            [FromHeader(Name = "Accept")] string mediaType)
         {
+
+            if (!MediaTypeHeaderValue.TryParse(mediaType, out MediaTypeHeaderValue parsedMediaType))
+            {
+                return BadRequest();
+            }
+
             if (!_propertyCheckerService.TypeHasProperties<AuthorDto>(fields))
             {
                 return BadRequest();
@@ -197,11 +211,38 @@ namespace HATEOASWebService.Controllers
                 return NotFound();
             }
 
-            var links = CreateLinksForAuthor(authorId, fields);
+            var includeLinks = parsedMediaType.SubTypeWithoutSuffix.EndsWith("hateoas", StringComparison.InvariantCultureIgnoreCase);
 
-            var linkedResourceToReturn = _mapper.Map<AuthorDto>(author).ShapeData(fields) as IDictionary<string, object>;
-            linkedResourceToReturn.Add("links", links);
-            return Ok(linkedResourceToReturn);
+            IEnumerable<LinkDto> links = new List<LinkDto>();
+
+            if (includeLinks)
+            {
+                links = CreateLinksForAuthor(authorId, fields);
+            }
+
+            var primeMediaType = includeLinks
+                ? parsedMediaType.SubTypeWithoutSuffix.Substring(0, parsedMediaType.SubTypeWithoutSuffix.Length - 8)
+                : parsedMediaType.SubTypeWithoutSuffix;
+
+
+            if(primeMediaType == "vnd.marvin.author.full")
+            {
+                var fullResourceToReturn = _mapper.Map<AuthorFullDto>(author).ShapeData(fields) as IDictionary<string, object>;
+                if(includeLinks)
+                {
+                    fullResourceToReturn.Add("links", links);
+                }
+
+                return Ok(fullResourceToReturn);
+            }
+
+            var friendlyResourceToReturn = _mapper.Map<AuthorDto>(author).ShapeData(fields) as IDictionary<string, object>;
+
+            if (includeLinks)
+            {
+                friendlyResourceToReturn.Add("links", links);
+            }
+            return Ok(friendlyResourceToReturn);
         }
 
         [HttpPost(Name = "CreateAuthor")]

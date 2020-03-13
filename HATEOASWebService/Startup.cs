@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using AutoMapper;
 using HATEOASWebService.Data.DbContexts;
 using HATEOASWebService.Services;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,11 +42,17 @@ namespace HATEOASWebService
                 //        @"Server=(localdb)\mssqllocaldb;Database=CourseLibraryDB;Trusted_Connection=True;");
             });
 
+            services.AddResponseCaching();
+
             // Json and XML formateer order does matter
             // whoever goes first becomes default in case if content type in header is omitted
             services.AddControllers(options =>
             {
                 options.ReturnHttpNotAcceptable = true;
+                options.CacheProfiles.Add("240SecondsCacheProfile", new CacheProfile 
+                                            {
+                                                Duration = 240
+                                            });
             })
             .AddNewtonsoftJson(options =>
             {
@@ -55,6 +63,17 @@ namespace HATEOASWebService
             .ConfigureApiBehaviorOptions(setupAction =>
             {
                 setupAction.InvalidModelStateResponseFactory = InvalidModelStateResponse;
+            });
+
+            services.Configure<MvcOptions>(options => 
+            {
+                var newtonsoftJsonOutputFormatter = 
+                        options.OutputFormatters.OfType<NewtonsoftJsonOutputFormatter>()?.FirstOrDefault();
+
+                if(newtonsoftJsonOutputFormatter != null)
+                {
+                    newtonsoftJsonOutputFormatter.SupportedMediaTypes.Add("application/vnd.marvin.hateoas+json");
+                }
             });
         }
 
@@ -97,6 +116,8 @@ namespace HATEOASWebService
             }
 
             app.UseHttpsRedirection();
+
+            app.UseResponseCaching();
 
             app.UseRouting();
 
